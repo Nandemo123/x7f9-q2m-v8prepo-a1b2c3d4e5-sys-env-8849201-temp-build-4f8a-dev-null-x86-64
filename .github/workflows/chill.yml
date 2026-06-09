@@ -1,0 +1,409 @@
+name: Chill
+
+on:
+  workflow_dispatch:
+    inputs:
+      rdp_username:
+        description: "Username for the RDP session"
+        required: true
+        default: "Neon"
+        type: string
+      rdp_password:
+        description: "Password for the RDP session"
+        required: true
+        default: "DarkNeonPass2026!"
+        type: string
+      rdp_language:
+        description: "System and Display Language for the Workspace"
+        required: true
+        default: "en-US"
+        type: choice
+        options:
+          - "en-US" # English (United States)
+          - "fr-FR" # French (France)
+          - "es-ES" # Spanish (Spain)
+      rdp_timeout:
+        description: "Session timeout allocation in minutes (Max: 350 min / 5h50)"
+        required: true
+        default: "350"
+        type: string
+      node_version:
+        description: "Node.js Environment Architecture Upgrade"
+        required: true
+        default: "22"
+        type: choice
+        options:
+          - "22" # Current Stable Long-Term Support
+          - "24" # Node 24 Infrastructure Standard
+          - "20" # Legacy Compatibility Layer
+      java_version:
+        description: "Java JDK Environment Architecture Upgrade (Android Development)"
+        required: true
+        default: "17"
+        type: choice
+        options:
+          - "17" # Standard LTS for modern Android Studio
+          - "21" # Next-Gen Enterprise OpenJDK
+          - "11" # Legacy Android Compatibility
+
+      # ==========================================
+      # VERROUS & ENGINS DE DÉPENDANCES (BOOLEANS)
+      # ==========================================
+      install_claude_code:
+        description: "Install Custom Claude Code CLI Utility"
+        required: false
+        default: false
+        type: boolean
+      install_ghgrab:
+        description: "Install ghgrab via pipx toolset"
+        required: false
+        default: false
+        type: boolean
+      install_ollama:
+        description: "Install Ollama Local AI Infrastructure"
+        required: false
+        default: false
+        type: boolean
+      install_php:
+        description: "Install PHP Runtime Environment"
+        required: false
+        default: false
+        type: boolean
+      install_docker:
+        description: "Install Docker Desktop Infrastructure Engine"
+        required: false
+        default: false
+        type: boolean
+
+      # ==========================================
+      # ZONE DE CHARGEMENT DE MASSE (50+ APPS)
+      # ==========================================
+      custom_winget_apps:
+        description: "List of Apps to deploy via Winget (Leave empty to install nothing)"
+        required: false
+        type: string
+        default: "" # Reste vide par défaut comme demandé
+
+# ========================================================
+# 🔒 SÉCURITÉ INFRASTRUCTURE : PERMISSIONS STRICTES RETENUES
+# ========================================================
+permissions:
+  contents: read   # Le serveur peut lire le code mais ne peut rien modifier sur ton GitHub
+  actions: read    # Accès en lecture seule aux statuts
+
+jobs:
+  secure-rdp:
+    # 🔒 REPOSITORY LOCK: Le workflow refusera catégoriquement de s'exécuter sur un fork tiers
+    if: github.repository == 'JCVERSA/KWEPING-space'
+    runs-on: windows-2025
+    
+    # 🔒 APPROVAL LOCK: Demande ton feu vert obligatoire et lie l'accès au secret de l'environnement
+    environment: Production
+    
+    # Limitation stricte de l'allocation dynamique
+    timeout-minutes: 360
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # 1. INITIALISATION DE LA STRUCTURE SUR D:
+      # ==========================================
+      - name: "Initialize directory structure on Drive D"
+        shell: powershell
+        run: |
+          $dirs = @(
+              "D:\RDP_Data",
+              "D:\RDP_Data\Projects",
+              "D:\RDP_Data\FirefoxProfile",
+              "D:\RDP_Data\AndroidConfig\.android",
+              "D:\RDP_Data\AndroidConfig\.AndroidStudio",
+              "D:\RDP_Data\AndroidConfig\.gradle"
+          )
+          foreach ($dir in $dirs) {
+              if (-not (Test-Path $dir)) {
+                  New-Item -ItemType Directory -Path $dir -Force
+              }
+          }
+
+      # ==========================================
+      # 2. RESTAURATION ET SAUVEGARDE DES CACHES
+      # ==========================================
+      - name: "Cache 1: Personal Projects & Sites"
+        uses: actions/cache@v4
+        with:
+          path: D:\RDP_Data\Projects
+          key: rdp-projects-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: rdp-projects-
+
+      - name: "Cache 2: Persistent Firefox Profile"
+        uses: actions/cache@v4
+        with:
+          path: D:\RDP_Data\FirefoxProfile
+          key: rdp-firefox-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: rdp-firefox-
+
+      - name: "Cache 3: Android Gradle Dependencies"
+        uses: actions/cache@v4
+        with:
+          path: D:\RDP_Data\AndroidConfig\.gradle
+          key: rdp-gradle-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: rdp-gradle-
+
+      - name: "Cache 4: Android Studio Config & SDK"
+        uses: actions/cache@v4
+        with:
+          path: D:\RDP_Data\AndroidConfig
+          key: rdp-android-studio-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: rdp-android-studio-
+
+      # ==========================================
+      # 3. DÉPLOIMENT DES RUNTIMES (NODE & JAVA)
+      # ==========================================
+      - name: "Deploy Selected Runtime: Node.js v${{ inputs.node_version }}"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: "Deploy Selected Runtime: Java OpenJDK v${{ inputs.java_version }}"
+        uses: actions/setup-java@v4
+        with:
+          distribution: "microsoft"
+          java-version: ${{ inputs.java_version }}
+
+      # ==========================================
+      # 3.5 DEPLOYEMENT DES OUTILS PERSONNALISÉS
+      # ==========================================
+      - name: "Provision Custom Architect Tools"
+        shell: powershell
+        run: |
+          # 1. Custom Claude Code Installation
+          if ("${{ inputs.install_claude_code }}" -eq "true") {
+              Write-Host "[INSTALL] Deploying Free Claude Code..." -ForegroundColor Cyan
+              irm "https://github.com/Alishahryar1/free-claude-code/blob/main/scripts/install.ps1?raw=1" | iex
+          }
+
+          # 2. ghgrab installation via pipx
+          if ("${{ inputs.install_ghgrab }}" -eq "true") {
+              Write-Host "[INSTALL] Deploying ghgrab via pipx..." -ForegroundColor Cyan
+              pipx install ghgrab
+          }
+
+          # 3. Ollama Installation
+          if ("${{ inputs.install_ollama }}" -eq "true") {
+              Write-Host "[INSTALL] Deploying Ollama Local Engine..." -ForegroundColor Cyan
+              irm https://ollama.com/install.ps1 | iex
+          }
+
+          # 4. PHP Environment Deployment
+          if ("${{ inputs.install_php }}" -eq "true") {
+              Write-Host "[INSTALL] Deploying PHP Environment..." -ForegroundColor Cyan
+              winget install --silent --accept-source-agreements --accept-package-agreements PHP.PHP
+          }
+
+          # 5. Docker Desktop Installation
+          if ("${{ inputs.install_docker }}" -eq "true") {
+              Write-Host "[INSTALL] Deploying Docker Desktop Infrastructure..." -ForegroundColor Cyan
+              winget install --silent --accept-source-agreements --accept-package-agreements Docker.DockerDesktop
+          }
+
+      # ==========================================
+      # 3.6 DEPLOYEMENT DE MASSE (WINGET)
+      # ==========================================
+      - name: "Bulk Applications Delivery"
+        shell: powershell
+        run: |
+          $appsString = "${{ inputs.custom_winget_apps }}".Trim()
+          if (-not [string]::IsNullOrEmpty($appsString)) {
+              $apps = $appsString -split " "
+              Write-Host "[WINGET] Bulk execution triggered for $($apps.Count) applications." -ForegroundColor Cyan
+              foreach ($app in $apps) {
+                  if (-not [string]::IsNullOrEmpty($app)) {
+                      Write-Host "Installing Package: $app" -ForegroundColor Cyan
+                      winget install --silent --accept-source-agreements --accept-package-agreements --id $app
+                  }
+              }
+          } else {
+              Write-Host "[WINGET] No custom apps provided. Skipping execution step." -ForegroundColor Yellow
+          }
+
+      # ==========================================
+      # 4. CONFIGURATION DU SERVEUR RDP
+      # ==========================================
+      - name: "Configure Core RDP Settings"
+        shell: powershell
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0 -Force
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0 -Force
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "SecurityLayer" -Value 0 -Force
+
+          netsh advfirewall firewall delete rule name="RDP-Tailscale" 2>$null
+          netsh advfirewall firewall add rule name="RDP-Tailscale" dir=in action=allow protocol=TCP localport=3389 remoteip=100.64.0.0/10
+
+          Restart-Service -Name TermService -Force
+
+      # ==========================================
+      # 5. CONFIGURATION DE LA LANGUE SYSTÈME
+      # ==========================================
+      - name: "Apply Requested Workspace Language Pack"
+        shell: powershell
+        run: |
+          $lang = "${{ inputs.rdp_language }}"
+          Write-Host "[LANG] Configuring system language to: $lang" -ForegroundColor Cyan
+          
+          Set-WinSystemLocale -SystemLocale $lang
+          Set-WinUserLanguageList -LanguageList $lang -Force
+          
+          if ($lang -eq "fr-FR") {
+              Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Nls\Language" -Name "InstallLanguage" -Value "040c" -Force
+              Set-WinHomeLocation -GeoId 84
+          } elseif ($lang -eq "es-ES") {
+              Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Nls\Language" -Name "InstallLanguage" -Value "0c0a" -Force
+              Set-WinHomeLocation -GeoId 217
+          } else {
+              Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Nls\Language" -Name "InstallLanguage" -Value "0409" -Force
+              Set-WinHomeLocation -GeoId 244
+          }
+          Write-Host "[SUCCESS] Regional and execution policies applied for $lang." -ForegroundColor Green
+
+      - name: "Create RDP User from Inputs"
+        shell: powershell
+        run: |
+          $username = "${{ inputs.rdp_username }}".Trim()
+          $password = "${{ inputs.rdp_password }}".Trim()
+
+          Write-Host "Configuring system user account: $username" -ForegroundColor Cyan
+          $securePass = ConvertTo-SecureString $password -AsPlainText -Force
+          
+          if (-not (Get-LocalUser -Name $username -ErrorAction SilentlyContinue)) {
+              New-LocalUser -Name $username -Password $securePass -AccountNeverExpires
+              Add-LocalGroupMember -Group "Administrators" -Member $username
+              Add-LocalGroupMember -Group "Remote Desktop Users" -Member $username
+              Write-Host "[SUCCESS] User account '$username' deployed successfully." -ForegroundColor Green
+          } else {
+              $user = Get-LocalUser -Name $username
+              $user | Set-LocalUser -Password $securePass
+              Write-Host "[SUCCESS] Credentials updated for existing user '$username'." -ForegroundColor Green
+          }
+
+      # ==========================================
+      # 6. VARIABLES D'ENVIRONNEMENT PERSISTANTES
+      # ==========================================
+      - name: "Enforce persistent environment structures"
+        shell: powershell
+        run: |
+          [Environment]::SetEnvironmentVariable("GRADLE_USER_HOME", "D:\RDP_Data\AndroidConfig\.gradle", "Machine")
+          [Environment]::SetEnvironmentVariable("ANDROID_USER_HOME", "D:\RDP_Data\AndroidConfig\.android", "Machine")
+          [Environment]::SetEnvironmentVariable("ANDROID_EMULATOR_HOME", "D:\RDP_Data\AndroidConfig\.android", "Machine")
+          
+          echo "GRADLE_USER_HOME=D:\RDP_Data\AndroidConfig\.gradle" >> $env:GITHUB_ENV
+          echo "ANDROID_USER_HOME=D:\RDP_Data\AndroidConfig\.android" >> $env:GITHUB_ENV
+
+      # ==========================================
+      # 7. ARCHITECTURE RÉSEAU VPN (TAILSCALE)
+      # ==========================================
+      - name: "Install Tailscale Engine"
+        shell: powershell
+        run: |
+          $tsUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi"
+          $installerPath = "$env:TEMP\tailscale.msi"
+          Invoke-WebRequest -Uri $tsUrl -OutFile $installerPath
+          $process = Start-Process msiexec.exe -ArgumentList "/i", "`"$installerPath`"", "/quiet", "/norestart" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit 1 }
+          Remove-Item $installerPath -Force
+
+      - name: "Establish Tailscale Connection"
+        shell: powershell
+        run: |
+          & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-runner-${{ github.run_id }}
+          $tsIP = $null
+          $retries = 0
+          while (-not $tsIP -and $retries -lt 12) {
+              Start-Sleep -Seconds 5
+              $tsIP = (& "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4).Trim()
+              $retries++
+          }
+          if (-not $tsIP) { exit 1 }
+          echo "TAILSCALE_IP=$tsIP" >> $env:GITHUB_ENV
+
+      # ==========================================
+      # 8. MAINTIEN DE LA SESSION ET SCRIPT DE SORTIE
+      # ==========================================
+      - name: "Maintain Connection Loop"
+        shell: powershell
+        run: |
+          $publicDesktop = "C:\Users\Public\Desktop"
+          $shortcutPath = "$publicDesktop\Save_and_Exit.bat"
+          $scriptContent = @"
+          @echo off
+          echo ===================================================
+          echo    SAVING YOUR PROJECTS AND CLOSING WORKSPACE RDP
+          echo ===================================================
+          echo.
+          echo Transmitting stop notification flag to GitHub...
+          echo stop > D:\RDP_Data\stop.txt
+          echo.
+          echo You can now safely close this Remote Desktop window.
+          echo GitHub Actions will finalize cache commit operations.
+          echo.
+          pause
+          "@
+          Set-Content -Path $shortcutPath -Value $scriptContent -Force
+
+          # Calcul du timeout dynamique
+          [int]$inputMinutes = ${{ inputs.rdp_timeout }}
+          if ($inputMinutes -gt 350 -or $inputMinutes -le 0) { $inputMinutes = 350 }
+          $maxSeconds = $inputMinutes * 60
+          $elapsed = 0
+
+          Write-Host "`n===============================================" -ForegroundColor Green
+          Write-Host "          WINDOWS RDP RUNTIME ONLINE           " -ForegroundColor Green
+          Write-Host "===============================================" -ForegroundColor Green
+          Write-Host "Tailscale IP Address : $env:TAILSCALE_IP" -ForegroundColor Cyan
+          Write-Host "Active Username      : ${{ inputs.rdp_username }}" -ForegroundColor Cyan
+          Write-Host "Active Password      : ${{ inputs.rdp_password }}" -ForegroundColor Cyan
+          Write-Host "Selected UI Language : ${{ inputs.rdp_language }}" -ForegroundColor Cyan
+          Write-Host "Allocated Runtime    : $inputMinutes minutes (${{ inputs.rdp_timeout }} requested)" -ForegroundColor Cyan
+          Write-Host "Node.js Environment  : v${{ inputs.node_version }}" -ForegroundColor High-Level
+          Write-Host "Java Development Kit : v${{ inputs.java_version }}" -ForegroundColor High-Level
+          Write-Host "-----------------------------------------------"
+          Write-Host "⚠️  CRITICAL FOR PERSISTENCE MAPS: ⚠️" -ForegroundColor Red
+          Write-Host "When your work session is finished, execute the" -ForegroundColor Yellow
+          Write-Host "  'Save_and_Exit' script shortcut found directly" -ForegroundColor Yellow
+          Write-Host "  on your cloud instance Windows Desktop interface!" -ForegroundColor Yellow
+          Write-Host "==============================================="`n
+          
+          if (Test-Path "D:\RDP_Data\stop.txt") { Remove-Item "D:\RDP_Data\stop.txt" -Force }
+
+          while ($elapsed -lt $maxSeconds) {
+              if (Test-Path "D:\RDP_Data\stop.txt") {
+                  Remove-Item "D:\RDP_Data\stop.txt" -Force
+                  Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Shutdown trigger caught! Initializing unmount procedures..." -ForegroundColor Green
+                  break
+              }
+              Start-Sleep -Seconds 10
+              $elapsed += 10
+              if (($elapsed % 300) -eq 0) {
+                  $timeLeft = [Math]::Round(($maxSeconds - $elapsed) / 60, 1)
+                  Write-Host "[$(Get-Date -Format 'HH:mm:ss')] RDP pipeline active. Approximately $timeLeft minutes remaining."
+              }
+          }
+
+      # ==========================================
+      # 9. NETTOYAGE DES FLUX ET FIN DE MACHINE
+      # ==========================================
+      - name: "Kill processes and release file system locks"
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "Stopping active background programs to unlock cache runtimes..."
+          Stop-Process -Name "firefox" -Force -ErrorAction SilentlyContinue
+          Stop-Process -Name "Code" -Force -ErrorAction SilentlyContinue
+          Stop-Process -Name "node" -Force -ErrorAction SilentlyContinue
+          Stop-Process -Name "java" -Force -ErrorAction SilentlyContinue
+          Stop-Process -Name "studio64" -Force -ErrorAction SilentlyContinue
+          Stop-Process -Name "adb" -Force -ErrorAction SilentlyContinue
+          
+          Start-Sleep -Seconds 5
+          Write-Host "File locks released successfully. System ready for safe cache tracking."
